@@ -8,6 +8,7 @@ import {
   ASTNode,
   getNamedType,
   ArgumentNode,
+  FieldNode,
 } from "graphql";
 
 function getParentTypeFromAncestors(
@@ -40,6 +41,17 @@ function getParentTypeFromAncestors(
   return currentType;
 }
 
+function getParentFields(ancestors: readonly (ASTNode | readonly ASTNode[])[]): FieldNode[] {
+  return ancestors
+    .filter((ancestor): ancestor is FieldNode => {
+      if (!("kind" in ancestor)) {
+        return false
+      }
+      return ancestor.kind === "Field"
+    })
+    .reverse();
+}
+
 function getFisrtOrLastArg(node: readonly ArgumentNode[]): number | null {
   const firstOrLastArg = node.find(arg => arg.name.value === 'first' || arg.name.value === 'last');
   if (!firstOrLastArg) {
@@ -49,6 +61,30 @@ function getFisrtOrLastArg(node: readonly ArgumentNode[]): number | null {
     return null
   }
   return parseInt(firstOrLastArg.value.value, 10);
+}
+
+function isEdgesInConnection(node: FieldNode, ancestors: readonly (ASTNode | readonly ASTNode[])[]) {
+  if (node.name.value !== 'edges') {
+    return false
+  }
+  const parentFields = getParentFields(ancestors);
+  if (!parentFields[0]) {
+    return false
+  }
+  const parentField = parentFields[0];
+  return getFisrtOrLastArg(parentField.arguments || []) !== null
+}
+
+function isNodeInEdges(node: FieldNode, ancestors: readonly (ASTNode | readonly ASTNode[])[]) {
+  if (node.name.value !== 'node') {
+    return false
+  }
+  const parentFields = getParentFields(ancestors);
+  if (!parentFields[0]) {
+    return false
+  }
+  const parentField = parentFields[0];
+  return parentField.name.value === 'edges'
 }
 
 export function calculateMaxNode(schema: GraphQLSchema, query: string) {
@@ -79,7 +115,8 @@ export function calculateMaxNode(schema: GraphQLSchema, query: string) {
         if (firstOrLastArg !== null) {
           cost += firstOrLastArg * currentMultiplier;
         } else {
-          if (node.name.value === 'node' || node.name.value === 'edges') {
+          if (isEdgesInConnection(node, ancestors)
+            || isNodeInEdges(node, ancestors)) {
             return
           }
           cost += 1;

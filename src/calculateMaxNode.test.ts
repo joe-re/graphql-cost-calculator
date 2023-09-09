@@ -1,5 +1,6 @@
 import { makeExecutableSchema } from '@graphql-tools/schema'
 import { calculateMaxNode } from './calculateMaxNode';
+
 const typeDefs = `#graphql
   type Query {
     hello: String
@@ -14,6 +15,7 @@ const typeDefs = `#graphql
     likedUsers(first: Int!): UserConnection
   }
   type ItemConnection {
+    totalCount: Int!
     edges: [ItemEdge]
     pageInfo: PageInfo!
   }
@@ -33,6 +35,7 @@ const typeDefs = `#graphql
   }
 
   type UserConnection {
+    totalCount: Int!
     edges: [UserEdge!]!
     pageInfo: PageInfo!
   }
@@ -57,10 +60,12 @@ describe('calculateMaxNode', () => {
             id
           }
           items(first: 10) { # 10pt
+            totalConut
             edges {
               node {
                 id
                 likedUsers(first: 10) { # 10 * 10 = 100 pt
+                  totalConut
                   edges {
                     cursor
                     node {
@@ -85,9 +90,11 @@ describe('calculateMaxNode', () => {
           }
           items(last: 10) { # 10pt
             edges {
+              totalConut
               node {
                 id
                 likedUsers(last: 10) { # 10 * 10 = 100 pt
+                  totalConut
                   edges {
                     cursor
                     node {
