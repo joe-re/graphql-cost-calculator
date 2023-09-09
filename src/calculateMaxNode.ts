@@ -7,6 +7,7 @@ import {
   GraphQLSchema,
   ASTNode,
   getNamedType,
+  ArgumentNode,
 } from "graphql";
 
 function getParentTypeFromAncestors(
@@ -39,55 +40,66 @@ function getParentTypeFromAncestors(
   return currentType;
 }
 
+function getFisrtOrLastArg(node: readonly ArgumentNode[]): number | null {
+  const firstOrLastArg = node.find(arg => arg.name.value === 'first' || arg.name.value === 'last');
+  if (!firstOrLastArg) {
+    return null
+  }
+  if (firstOrLastArg.value.kind !== 'IntValue') {
+    return null
+  }
+  return parseInt(firstOrLastArg.value.value, 10);
+}
+
 export function calculateMaxNode(schema: GraphQLSchema, query: string) {
   const ast = parse(query);
   let cost = 0;
   let multiplierStack: number[] = [1];
   visit(ast, {
-    Field(node, _key, _parent, _path, ancestors) {
-      const currentMultiplier = multiplierStack[multiplierStack.length - 1];
-      const parentType = getParentTypeFromAncestors(schema, ancestors);
-      if (!parentType || !(parentType instanceof GraphQLObjectType)) return;
+    Field: {
+      enter: (node, _key, _parent, _path, ancestors) => {
+        const currentMultiplier = multiplierStack[multiplierStack.length - 1];
+        const parentType = getParentTypeFromAncestors(schema, ancestors);
+        if (!parentType || !(parentType instanceof GraphQLObjectType)) {
+          return;
+        }
 
-      const fieldDefinition = parentType.getFields()[node.name.value];
-      if (!fieldDefinition) return;
+        const fieldDefinition = parentType.getFields()[node.name.value];
+        if (!fieldDefinition) {
+          return;
+        }
 
-      const namedType = getNamedType(fieldDefinition.type);
+        const namedType = getNamedType(fieldDefinition.type);
 
-      if (isObjectType(namedType)) {
-        const firstOrLastArg = node.arguments?.find(arg => arg.name.value === 'first');
-        if (firstOrLastArg && firstOrLastArg.value.kind === 'IntValue') {
-          console.log(node.name.value)
-          console.log(currentMultiplier)
-          const count = parseInt(firstOrLastArg.value.value, 10);
-          cost += count * currentMultiplier;
+        if (!isObjectType(namedType)) {
+          return;
+        }
+
+        const firstOrLastArg = getFisrtOrLastArg(node.arguments || []);
+        if (firstOrLastArg !== null) {
+          cost += firstOrLastArg * currentMultiplier;
         } else {
           if (node.name.value === 'node' || node.name.value === 'edges') {
             return
           }
           cost += 1;
         }
-      } else if (isScalarType(namedType)) {
-        cost += 0;
       }
     },
     SelectionSet: {
       enter(_node, _key, parent) {
         const parentField = parent as any;
-        const firstArg = parentField.arguments?.find(
-          (arg: any) => arg.name.value === "first"
-        );
-        if (firstArg && firstArg.value.kind === "IntValue") {
-          const count = parseInt(firstArg.value.value, 10);
+        const firstOrLastArg = getFisrtOrLastArg(parentField.arguments || [])
+        if (firstOrLastArg !== null) {
           const currentMultiplier =
             multiplierStack[multiplierStack.length - 1];
-          multiplierStack.push(count * currentMultiplier); // 新しい乗数をスタックに追加
+          multiplierStack.push(firstOrLastArg * currentMultiplier);
         } else {
           multiplierStack.push(multiplierStack[multiplierStack.length - 1]);
         }
       },
       leave() {
-        multiplierStack.pop(); // スコープを抜ける際に乗数をスタックから取り除く
+        multiplierStack.pop();
       },
     },
   });

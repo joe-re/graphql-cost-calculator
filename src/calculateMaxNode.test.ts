@@ -46,7 +46,7 @@ const schema = makeExecutableSchema({
 });
 
 describe('calculateMaxNode', () => {
-  it('should calculate max node', () => {
+  it('should calculate the max node count with considering a first argument', () => {
     const query = `
       query {
         item { # 1pt
@@ -57,6 +57,33 @@ describe('calculateMaxNode', () => {
             node {
               id
               likedUsers(first: 10) { # 10 * 10 = 100 pt
+                edges {
+                  cursor
+                  node {
+                    id
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `
+    const result = calculateMaxNode(schema, query)
+    expect(result).toBe(111)
+  })
+
+  it('should calculate the max node count with considering a last argument', () => {
+    const query = `
+      query {
+        item { # 1pt
+          id
+        }
+        items(last: 10) { # 10pt
+          edges {
+            node {
+              id
+              likedUsers(last: 10) { # 10 * 10 = 100 pt
                 edges {
                   cursor
                   node {
