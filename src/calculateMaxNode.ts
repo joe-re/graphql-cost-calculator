@@ -3,7 +3,6 @@ import {
   visit,
   GraphQLObjectType,
   isObjectType,
-  isScalarType,
   GraphQLSchema,
   ASTNode,
   getNamedType,
