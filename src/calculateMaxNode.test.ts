@@ -132,4 +132,37 @@ describe('calculateMaxNode', () => {
       expect(result).toBe(11)
     })
   })
+
+  describe('fragment', () => {
+    it('should calculate the max node count with considering a first argument', () => {
+      const query = `
+        query {
+          item { 
+            id
+          }
+          items(first: 10) {
+            edges {
+              node {
+                ...ItemFragment
+              }
+            }
+          }
+        }
+      
+        fragment ItemFragment on Item {
+          id
+          likedUsers(first: 10) {
+            edges {
+              cursor
+              node {
+                id
+              }
+            }
+          }
+        }
+      `
+      const result = calculateMaxNode(schema, query)
+      expect(result).toBe(111)
+    })
+  })
 })

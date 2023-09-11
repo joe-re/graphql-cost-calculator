@@ -1,4 +1,4 @@
-import { ASTNode, ArgumentNode, GraphQLObjectType, GraphQLSchema, ValueNode, getNamedType } from "graphql";
+import { ASTNode, ArgumentNode, FragmentDefinitionNode, GraphQLObjectType, GraphQLSchema, ValueNode, getNamedType, visit } from "graphql";
 
 function getValueFromVariable(
   valueNode: ValueNode,
@@ -52,4 +52,25 @@ export function getParentTypeFromAncestors(
     }
   }
   return currentType;
+}
+
+export function inlineFragments(ast: ASTNode) {
+  const fragmentDefs: Record<string, FragmentDefinitionNode> = {};
+  visit(ast, {
+    FragmentDefinition: {
+      enter(node) {
+        fragmentDefs[node.name.value] = node;
+      },
+    },
+  });
+  return visit(ast, {
+    FragmentSpread: {
+      enter(node) {
+        const fragment = fragmentDefs[node.name.value];
+        if (fragment) {
+          return fragment.selectionSet;
+        }
+      },
+    },
+  });
 }

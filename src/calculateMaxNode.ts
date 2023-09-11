@@ -8,7 +8,7 @@ import {
   getNamedType,
   FieldNode,
 } from "graphql";
-import { getFisrtOrLastArg, getParentTypeFromAncestors } from "./utils";
+import { getFisrtOrLastArg, getParentTypeFromAncestors, inlineFragments } from "./utils";
 
 function getParentFields(ancestors: readonly (ASTNode | readonly ASTNode[])[]): FieldNode[] {
   return ancestors
@@ -46,9 +46,10 @@ function isNodeInEdges(node: FieldNode, ancestors: readonly (ASTNode | readonly 
 }
 
 export function calculateMaxNode(schema: GraphQLSchema, query: string) {
-  const ast = parse(query);
+  const ast = inlineFragments(parse(query));
   let cost = 0;
   let multiplierStack: number[] = [1];
+
   visit(ast, {
     Field: {
       enter: (node, _key, _parent, _path, ancestors) => {

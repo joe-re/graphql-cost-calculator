@@ -2,12 +2,11 @@ import {
   ASTNode,
   ASTVisitor,
   FieldNode,
-  FragmentDefinitionNode,
   GraphQLSchema,
   parse,
   visit,
 } from "graphql";
-import { getFisrtOrLastArg, getParentTypeFromAncestors } from "./utils";
+import { getFisrtOrLastArg, getParentTypeFromAncestors, inlineFragments } from "./utils";
 
 function getTypeCost(
   schema: GraphQLSchema,
@@ -24,22 +23,6 @@ function getTypeCost(
   return typeCostMap[typeName] || 0;
 }
 
-function inlineFragments(
-  ast: ASTNode,
-  fragmentDefs: Record<string, FragmentDefinitionNode>
-): any {
-  return visit(ast, {
-    FragmentSpread: {
-      enter(node) {
-        const fragment = fragmentDefs[node.name.value];
-        if (fragment) {
-          return fragment.selectionSet;
-        }
-      },
-    },
-  });
-}
-
 export function calculateCost({
   schema,
   query,
@@ -51,16 +34,7 @@ export function calculateCost({
   variables?: Record<string, any>;
   typeCostMap?: Record<string, number>;
 }) {
-  const ast = parse(query);
-  const fragmentDefs: Record<string, FragmentDefinitionNode> = {};
-  visit(ast, {
-    FragmentDefinition: {
-      enter(node) {
-        fragmentDefs[node.name.value] = node;
-      },
-    },
-  });
-  const inlineAst = inlineFragments(ast, fragmentDefs);
+  const ast = inlineFragments(parse(query));
 
   let cost = 0;
   let multiplierStack: number[] = [1];
@@ -106,6 +80,6 @@ export function calculateCost({
       },
     },
   };
-  visit(inlineAst, astVisitor);
+  visit(ast, astVisitor);
   return Math.floor(cost / 100);
 }
