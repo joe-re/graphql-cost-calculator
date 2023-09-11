@@ -126,4 +126,52 @@ describe("test", () => {
       expect(result).toBe(51);
     });
   });
+
+  describe('fragment', () => {
+    it("calculates cost", () => {
+      const graphqlSchema = buildClientSchema(schema.json as any);
+      const query = `
+        query {
+          viewer {
+            login
+            repositories(first: 100) {
+              edges {
+                node {
+                  id
+                  ...repositoryFragment
+                }
+              }
+            }
+          }
+        }
+        fragment repositoryFragment on Repository {
+          issues(first: 50) {
+            edges {
+              node {
+                id
+                ...issueFragment
+              }
+            }
+          }
+        }
+        fragment issueFragment on Issue {
+          labels(first: 60) {
+            edges {
+              node {
+                id
+                name
+              }
+            }
+          }
+        }
+      `;
+      const result = calculateCost({ schema: graphqlSchema, query, variables: {
+        repositoryFirst: 100,
+        issueFirst: 50,
+        labelFirst: 60,
+      } });
+      // 1 + 100 + 5000 = 5101
+      expect(result).toBe(51);
+    })
+  })
 });
