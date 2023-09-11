@@ -8,44 +8,65 @@ import {
   getNamedType,
   FieldNode,
 } from "graphql";
-import { getFisrtOrLastArg, getParentTypeFromAncestors, inlineFragments } from "./utils";
+import {
+  getFisrtOrLastArg,
+  getParentTypeFromAncestors,
+  inlineFragments,
+} from "./utils";
 
-function getParentFields(ancestors: readonly (ASTNode | readonly ASTNode[])[]): FieldNode[] {
+function getParentFields(
+  ancestors: readonly (ASTNode | readonly ASTNode[])[]
+): FieldNode[] {
   return ancestors
     .filter((ancestor): ancestor is FieldNode => {
       if (!("kind" in ancestor)) {
-        return false
+        return false;
       }
-      return ancestor.kind === "Field"
+      return ancestor.kind === "Field";
     })
     .reverse();
 }
 
-function isEdgesInConnection(node: FieldNode, ancestors: readonly (ASTNode | readonly ASTNode[])[]) {
-  if (node.name.value !== 'edges') {
-    return false
+function isEdgesInConnection(
+  node: FieldNode,
+  ancestors: readonly (ASTNode | readonly ASTNode[])[],
+  variables: Record<string, any>
+) {
+  if (node.name.value !== "edges") {
+    return false;
   }
   const parentFields = getParentFields(ancestors);
   if (!parentFields[0]) {
-    return false
+    return false;
   }
   const parentField = parentFields[0];
-  return getFisrtOrLastArg(parentField.arguments || []) !== null
+  return getFisrtOrLastArg(parentField.arguments || [], variables) !== null;
 }
 
-function isNodeInEdges(node: FieldNode, ancestors: readonly (ASTNode | readonly ASTNode[])[]) {
-  if (node.name.value !== 'node') {
-    return false
+function isNodeInEdges(
+  node: FieldNode,
+  ancestors: readonly (ASTNode | readonly ASTNode[])[]
+) {
+  if (node.name.value !== "node") {
+    return false;
   }
   const parentFields = getParentFields(ancestors);
   if (!parentFields[0]) {
-    return false
+    return false;
   }
   const parentField = parentFields[0];
-  return parentField.name.value === 'edges'
+  return parentField.name.value === "edges";
 }
 
-export function calculateMaxNode(schema: GraphQLSchema, query: string) {
+export function calculateMaxNode({
+  schema,
+  query,
+  variables,
+}: {
+  schema: GraphQLSchema;
+  query: string;
+  variables?: Record<string, any>;
+}) {
   const ast = inlineFragments(parse(query));
   let cost = 0;
   let multiplierStack: number[] = [1];
@@ -70,25 +91,32 @@ export function calculateMaxNode(schema: GraphQLSchema, query: string) {
           return;
         }
 
-        const firstOrLastArg = getFisrtOrLastArg(node.arguments || []);
+        const firstOrLastArg = getFisrtOrLastArg(
+          node.arguments || [],
+          variables || {}
+        );
         if (firstOrLastArg !== null) {
           cost += firstOrLastArg * currentMultiplier;
         } else {
-          if (isEdgesInConnection(node, ancestors)
-            || isNodeInEdges(node, ancestors)) {
-            return
+          if (
+            isEdgesInConnection(node, ancestors, variables ?? {}) ||
+            isNodeInEdges(node, ancestors)
+          ) {
+            return;
           }
           cost += 1;
         }
-      }
+      },
     },
     SelectionSet: {
       enter(_node, _key, parent) {
         const parentField = parent as any;
-        const firstOrLastArg = getFisrtOrLastArg(parentField.arguments || [])
+        const firstOrLastArg = getFisrtOrLastArg(
+          parentField.arguments || [],
+          variables || {}
+        );
         if (firstOrLastArg !== null) {
-          const currentMultiplier =
-            multiplierStack[multiplierStack.length - 1];
+          const currentMultiplier = multiplierStack[multiplierStack.length - 1];
           multiplierStack.push(firstOrLastArg * currentMultiplier);
         } else {
           multiplierStack.push(multiplierStack[multiplierStack.length - 1]);

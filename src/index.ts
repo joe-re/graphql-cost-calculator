@@ -8,7 +8,7 @@ export function calculateCost(params: {
   variables?: Record<string, any>;
   typeCostMap?: Record<string, number>;
 }) {
-  const maxNode = calculateMaxNode(params.schema, params.query);
+  const maxNode = calculateMaxNode(params);
   const cost = calculateCostGithubStyle(params);
   return {
     maxNode,

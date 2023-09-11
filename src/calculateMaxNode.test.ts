@@ -78,7 +78,7 @@ describe('calculateMaxNode', () => {
           }
         }
       `
-      const result = calculateMaxNode(schema, query)
+      const result = calculateMaxNode({ schema, query })
       expect(result).toBe(111)
     })
 
@@ -107,7 +107,7 @@ describe('calculateMaxNode', () => {
           }
         }
       `
-      const result = calculateMaxNode(schema, query)
+      const result = calculateMaxNode({ schema, query })
       expect(result).toBe(111)
     })
   })
@@ -128,13 +128,13 @@ describe('calculateMaxNode', () => {
             }
           }
         }`
-      const result = calculateMaxNode(schema, query)
+      const result = calculateMaxNode({ schema, query })
       expect(result).toBe(11)
     })
   })
 
   describe('fragment', () => {
-    it('should calculate the max node count with considering a first argument', () => {
+    it('should calculate the max node count with resolving fragment', () => {
       const query = `
         query {
           item { 
@@ -161,7 +161,40 @@ describe('calculateMaxNode', () => {
           }
         }
       `
-      const result = calculateMaxNode(schema, query)
+      const result = calculateMaxNode({ schema, query })
+      expect(result).toBe(111)
+    })
+  })
+
+  describe('variables', () => {
+    it('should calculate the max node count with resolving arguments', () => {
+      const query = `
+        query getItems($itemsFirst: Int!, $likedUsersFirst: Int!) {
+          item { 
+            id
+          }
+          items(first: $itemsFirst) {
+            edges {
+              node {
+                ...ItemFragment
+              }
+            }
+          }
+        }
+      
+        fragment ItemFragment on Item {
+          id
+          likedUsers(first: $likedUsersFirst) {
+            edges {
+              cursor
+              node {
+                id
+              }
+            }
+          }
+        }
+      `
+      const result = calculateMaxNode({ schema, query, variables: { itemsFirst: 10, likedUsersFirst: 10 } })
       expect(result).toBe(111)
     })
   })

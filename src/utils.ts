@@ -10,7 +10,7 @@ function getValueFromVariable(
   return null;
 }
 
-export function getFisrtOrLastArg(node: readonly ArgumentNode[], variables: Record<string, number> = {}): number | null {
+export function getFisrtOrLastArg(node: readonly ArgumentNode[], variables: Record<string, any>): number | null {
   const firstOrLastArg = node.find(arg => arg.name.value === 'first' || arg.name.value === 'last');
   if (!firstOrLastArg) {
     return null
