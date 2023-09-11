@@ -1,55 +1,61 @@
-import { ASTNode, FieldNode, GraphQLSchema, parse, visit } from "graphql";
+import {
+  ASTNode,
+  FieldNode,
+  GraphQLSchema,
+  ValueNode,
+  parse,
+  visit,
+} from "graphql";
 import { getFisrtOrLastArg, getParentTypeFromAncestors } from "./utils";
-
-type CalculateCostOptions = {
-  typeCostMap?: Record<string, number>;
-};
 
 function getTypeCost(
   schema: GraphQLSchema,
   ancestors: readonly (ASTNode | readonly ASTNode[])[],
   node: FieldNode,
-  options?: CalculateCostOptions
+  typeCostMap: Record<string, number>
 ) {
-  if (!options?.typeCostMap) {
-    return 0;
-  }
   const parentType = getParentTypeFromAncestors(schema, ancestors);
   const field = parentType?.getFields()[node.name.value];
   if (!field) {
     return 0;
   }
   const typeName = field.type.toString().replace(/[\[\]!]/g, "");
-  return options.typeCostMap[typeName] || 0;
+  return typeCostMap[typeName] || 0;
 }
 
-export function calculateCost(
-  schema: GraphQLSchema,
-  query: string,
-  options?: CalculateCostOptions
-) {
+export function calculateCost({
+  schema,
+  query,
+  variables,
+  typeCostMap,
+}: {
+  schema: GraphQLSchema;
+  query: string;
+  variables?: Record<string, any>;
+  typeCostMap?: Record<string, number>;
+}) {
   const ast = parse(query);
   let cost = 0;
   let multiplierStack: number[] = [1];
   visit(ast, {
     Field: {
       enter: (node, _key, _parent, _path, ancestors) => {
-        const firstOrLastArg = getFisrtOrLastArg(node.arguments || []);
+        const firstOrLastArg = getFisrtOrLastArg(node.arguments || [], variables || {});
         if (firstOrLastArg === null) {
           return;
         }
         const currentMultiplier = multiplierStack[multiplierStack.length - 1];
         cost += currentMultiplier;
-        const typeCost = getTypeCost(schema, ancestors, node, options)
+        const typeCost = getTypeCost(schema, ancestors, node, typeCostMap || {});
         if (typeCost > 0) {
-          cost += (typeCost * firstOrLastArg * currentMultiplier)
+          cost += typeCost * firstOrLastArg * currentMultiplier;
         }
       },
     },
     SelectionSet: {
-      enter(_node, _key, parent, _path, ancestors) {
+      enter() {
         const parentField = parent as any;
-        const firstOrLastArg = getFisrtOrLastArg(parentField.arguments || []);
+        const firstOrLastArg = getFisrtOrLastArg(parentField.arguments || [], variables || {});
         if (firstOrLastArg !== null) {
           const currentMultiplier = multiplierStack[multiplierStack.length - 1];
           multiplierStack.push(firstOrLastArg * currentMultiplier);

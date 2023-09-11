@@ -1,14 +1,27 @@
-import { ASTNode, ArgumentNode, GraphQLObjectType, GraphQLSchema, getNamedType } from "graphql";
+import { ASTNode, ArgumentNode, GraphQLObjectType, GraphQLSchema, ValueNode, getNamedType } from "graphql";
 
-export function getFisrtOrLastArg(node: readonly ArgumentNode[]): number | null {
+function getValueFromVariable(
+  valueNode: ValueNode,
+  variables: Record<string, any>
+): any {
+  if (valueNode.kind === "Variable" && variables) {
+    return variables[valueNode.name.value];
+  }
+  return null;
+}
+
+export function getFisrtOrLastArg(node: readonly ArgumentNode[], variables: Record<string, number>): number | null {
   const firstOrLastArg = node.find(arg => arg.name.value === 'first' || arg.name.value === 'last');
   if (!firstOrLastArg) {
     return null
   }
-  if (firstOrLastArg.value.kind !== 'IntValue') {
-    return null
+  if (firstOrLastArg.value.kind === "Variable") {
+    return getValueFromVariable(firstOrLastArg.value, variables);
+  } else if (firstOrLastArg.value.kind === "IntValue") {
+    return parseInt(firstOrLastArg.value.value, 10);
   }
-  return parseInt(firstOrLastArg.value.value, 10);
+
+  return null; 
 }
 
 export function getParentTypeFromAncestors(
