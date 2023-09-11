@@ -1,12 +1,12 @@
 # GraphQL Query Cost Calculator
 
-This library provides query cost calculation for implemting rate limiting like [Github GraphQL API](https://docs.github.com/en/graphql/overview/resource-limitations).
+This library offers a means to calculate the cost of a query, facilitating rate limiting similar to the [Github GraphQL API](https://docs.github.com/en/graphql/overview/resource-limitations).
 
-NOTE: For now it only works for schemas that follow [GraphQL Cursor Connections Specification](https://relay.dev/graphql/connections.htm).
+NOTE: Currently, it's only compatible with schemas adhering to [GraphQL Cursor Connections Specification](https://relay.dev/graphql/connections.htm).
 
 ## Installation
 
-Install the package via npm or yarn.
+You can install the package using either npm or yarn.
 
 ```sh
 npm install graphql-cost-calculator
@@ -32,12 +32,10 @@ const result = calculateCost({
           edges {
             node {
               id
-  
               issues(first: 50) {
                 edges {
                   node {
                     id
-  
                     labels(first: 60) {
                       edges {
                         node {
@@ -62,8 +60,8 @@ console.log(result) // { maxNode: 305101, cost: 51 }
 
 ## Result
 
-- MaxNode: Estimated max node count.
-- Cost: Calculated cost. (see [Github document](https://docs.github.com/en/graphql/overview/resource-limitations) to know the concept.)
+- MaxNode: This represents the estimated maximum node count.
+- Cost: The computed cost. For more on this concept, refer to the [Github document](https://docs.github.com/en/graphql/overview/resource-limitations).
 
 ## Arguments
 
@@ -78,8 +76,7 @@ console.log(result) // { maxNode: 305101, cost: 51 }
 
 ### typeCostMap
 
-You can set an additional object type weight for some objects.
-When your query includes some mached object types, the cost calculator adds weight for them.
+This lets you assign an additional weight to specific object types. If your query contains these specified object types, the cost calculator will append their respective weights.
 
 ```ts
 const result = calculateCost({
@@ -92,12 +89,10 @@ const result = calculateCost({
           edges {
             node {
               id
-  
               issues(first: 50) {
                 edges {
                   node {
                     id
-  
                     labels(first: 60) {
                       edges {
                         node {
