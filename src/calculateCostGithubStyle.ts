@@ -4,7 +4,6 @@ import {
   FieldNode,
   FragmentDefinitionNode,
   GraphQLSchema,
-  ValueNode,
   parse,
   visit,
 } from "graphql";
@@ -25,7 +24,10 @@ function getTypeCost(
   return typeCostMap[typeName] || 0;
 }
 
-function inlineFragments(ast: ASTNode, fragmentDefs: Record<string, FragmentDefinitionNode>): any {
+function inlineFragments(
+  ast: ASTNode,
+  fragmentDefs: Record<string, FragmentDefinitionNode>
+): any {
   return visit(ast, {
     FragmentSpread: {
       enter(node) {
@@ -33,8 +35,8 @@ function inlineFragments(ast: ASTNode, fragmentDefs: Record<string, FragmentDefi
         if (fragment) {
           return fragment.selectionSet;
         }
-      }
-    }
+      },
+    },
   });
 }
 
@@ -55,9 +57,9 @@ export function calculateCost({
     FragmentDefinition: {
       enter(node) {
         fragmentDefs[node.name.value] = node;
-      }
-    }
-  })
+      },
+    },
+  });
   const inlineAst = inlineFragments(ast, fragmentDefs);
 
   let cost = 0;
